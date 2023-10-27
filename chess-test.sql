@@ -1,31 +1,10 @@
-CREATE EXTENSION complex;
+CREATE EXTENSION chessboard;
 
-CREATE TABLE t (id integer, z complex);
+CREATE TABLE chess_games (
+    id serial PRIMARY KEY,
+    board chessboard
+);
 
-INSERT INTO t VALUES
-(1, '(1, 0)'),
-(2, '(0, 1)'),
-(3, '(-1, 0)'),
-(4, '(0, -1)');
+INSERT INTO chess_games VALUES "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNRwKQkq-01", "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8b--9950";
 
-SELECT * FROM t;
-
-SELECT z as z, 
-    re(z) as "Re(z)", 
-    im(z) as "Im(z)"
---  conjugate(z) as "z*"
-FROM t;
-
-SELECT * FROM t WHERE z << '(0, 0)';
--- SELECT * FROM t WHERE z >> '(0, 0)';
-SELECT * FROM t WHERE z <<| '(0, 0)';
--- SELECT * FROM t WHERE z |>> '(0, 0)';
-
-SELECT a.z as a, 
-    b.z as b, 
-    a.z + b.z as "a + b", 
---  a.z - b.z as "a - b",
---  a.z * b.z as "a*b", 
-    a.z / b.z as "a / b",
-    a.z <-> b.z as "a <-> b"
-FROM t a, t b;
+SELECT * FROM chess_games;
