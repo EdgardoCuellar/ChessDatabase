@@ -5,9 +5,11 @@
 
 PG_MODULE_MAGIC;
 
+#define MAX_FEN_LENGTH 1000
+
 typedef struct Chessboard
 {
-    char fen[100];
+    char fen[MAX_FEN_LENGTH];
 } Chessboard;
 
 PG_FUNCTION_INFO_V1(chessboard_in);
@@ -51,23 +53,4 @@ Datum chessboard_typmod_out(PG_FUNCTION_ARGS)
     int32 typmod = PG_GETARG_INT32(0);
     // Convert type modification to a string representation, if needed.
     PG_RETURN_INT32(typmod);
-}
-
-PG_FUNCTION_INFO_V1(chessboard_eq);
-PG_FUNCTION_INFO_V1(chessboard_ne);
-
-Datum chessboard_eq(PG_FUNCTION_ARGS)
-{
-    Chessboard *a = (Chessboard *)PG_GETARG_POINTER(0);
-    Chessboard *b = (Chessboard *)PG_GETARG_POINTER(1);
-
-    PG_RETURN_BOOL(strcmp(a->fen, b->fen) == 0);
-}
-
-Datum chessboard_ne(PG_FUNCTION_ARGS)
-{
-    Chessboard *a = (Chessboard *)PG_GETARG_POINTER(0);
-    Chessboard *b = (Chessboard *)PG_GETARG_POINTER(1);
-
-    PG_RETURN_BOOL(strcmp(a->fen, b->fen) != 0);
 }

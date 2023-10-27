@@ -1,6 +1,6 @@
-EXTENSION   = chess
-MODULES 	= chess
-DATA        = chess--1.0.sql chess.control
+EXTENSION   = chessboard
+MODULES 	= chessboard
+DATA        = chessboard.sql chessboard.control
 
 PG_CONFIG ?= pg_config
 PGXS = $(shell $(PG_CONFIG) --pgxs)
