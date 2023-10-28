@@ -1,6 +1,6 @@
 EXTENSION   = chessboard
 MODULES 	= chessboard
-DATA        = chessboard.sql chessboard.control
+DATA        = chessboard--1.0.sql chessboard.control
 
 CC = gcc
 CFLAGS = -I/usr/include/postgresql/server -fpic -shared

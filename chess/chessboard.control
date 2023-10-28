@@ -1,5 +1,5 @@
 # complex extension
 comment = 'Chess database - input/ouput functions for chess game'
 default_version = '1.0'
-module_pathname = '$libdir/chess'
+module_pathname = '$libdir/chessboard'
 relocatable = true
