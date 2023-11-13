@@ -14,6 +14,9 @@ typedef struct Chessboard
 
 PG_FUNCTION_INFO_V1(chessboard_in);
 PG_FUNCTION_INFO_V1(chessboard_out);
+PG_FUNCTION_INFO_V1(chessboard_recv);
+PG_FUNCTION_INFO_V1(chessboard_send);
+PG_FUNCTION_INFO_V1(chessboard_constructor);
 
 static bool isValidFEN(const char *fen)
 {
@@ -50,7 +53,7 @@ Datum chessboard_in(PG_FUNCTION_ARGS)
     if (!isValidFEN(str))
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                 errmsg("invalid FEN representation 1: %s", str)));
+                 errmsg("invalid FEN representation: %s", str)));
 
     result = (Chessboard *)palloc(sizeof(Chessboard));
     strcpy(result->fen, str);
@@ -64,24 +67,35 @@ Datum chessboard_out(PG_FUNCTION_ARGS)
     PG_RETURN_CSTRING(result);
 }
 
-PG_FUNCTION_INFO_V1(chessboard_typmod_in);
-PG_FUNCTION_INFO_V1(chessboard_typmod_out);
-
-Datum chessboard_typmod_in(PG_FUNCTION_ARGS)
+Datum chessboard_recv(PG_FUNCTION_ARGS)
 {
-    int32 typmod = PG_GETARG_INT32(0);
-    // Perform type modification validation here, if needed.
-    PG_RETURN_INT32(typmod);
+    StringInfo buf = (StringInfo)PG_GETARG_POINTER(0);
+    const char *str = pq_getmsgtext(buf, buf->len);
+    Chessboard *result;
+
+    // Perform FEN validation here and set result->fen
+    if (!isValidFEN(str))
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                 errmsg("invalid FEN representation: %s", str)));
+
+    result = (Chessboard *)palloc(sizeof(Chessboard));
+    strcpy(result->fen, str);
+
+    PG_RETURN_POINTER(result);
 }
 
-Datum chessboard_typmod_out(PG_FUNCTION_ARGS)
+Datum chessboard_send(PG_FUNCTION_ARGS)
 {
-    int32 typmod = PG_GETARG_INT32(0);
-    // Convert type modification to a string representation, if needed.
-    PG_RETURN_INT32(typmod);
+    Chessboard *cb = (Chessboard *)PG_GETARG_POINTER(0);
+    StringInfoData buf;
+
+    // Convert FEN string to text format
+    pq_begintypsend(&buf);
+    pq_sendtext(&buf, cb->fen, strlen(cb->fen));
+    PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
 }
 
-PG_FUNCTION_INFO_V1(chessboard_constructor);
 Datum chessboard_constructor(PG_FUNCTION_ARGS)
 {
     text *fen_text = PG_GETARG_TEXT_P(0); // Input FEN text
@@ -92,7 +106,7 @@ Datum chessboard_constructor(PG_FUNCTION_ARGS)
     {
         ereport(ERROR,
             (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-             errmsg("invalid FEN representation 2: %s", fen_str)));
+             errmsg("invalid FEN representation: %s", fen_str)));
     }
 
     Chessboard *result = (Chessboard *)palloc(sizeof(Chessboard));
