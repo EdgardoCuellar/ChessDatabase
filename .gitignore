@@ -1,2 +1,4 @@
 data
 chess/*.o
+
+.vscode/
