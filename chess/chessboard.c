@@ -27,7 +27,7 @@ PG_FUNCTION_INFO_V1(chessboard_constructor);
 static bool isValidFEN(const char *fen)
 {
     /* Regular expression pattern for FEN validation */
-    static const char *fen_pattern = "^[KQRBNPkqrbnp1-8]+(/[KQRBNPkqrbnp1-8]+){7} [wb] [-KQkq]+ (-|[a-h][36]) \\d+ \\d+$";
+    static const char *fen_pattern = "^[KQRBNPkqrbnp1-8]+(/[KQRBNPkqrbnp1-8]+){7} [wb] (-|[KQkq]+) (-|[a-h36]+) \\d+ \\d+$";
 
     /* Compile the regular expression pattern */
     regex_t re;
