@@ -44,3 +44,12 @@ CREATE OR REPLACE FUNCTION chessboard_constructor(text)
 RETURNS chessboard
 AS 'MODULE_PATHNAME', 'chessboard_constructor'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+
+-- FUCNTIONSSSSSSSS
+
+-- Create or replace the get_board function
+CREATE OR REPLACE FUNCTION get_board(chessgame text, halfmove_count integer)
+RETURNS chessboard
+AS 'MODULE_PATHNAME', 'get_board'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;

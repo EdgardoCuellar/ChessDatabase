@@ -44,7 +44,7 @@ static bool isValidFEN(const char *fen)
     /* Free the regex resources */
     regfree(&re);
 
-    ret = 0;
+    ret = 0; // TO FIX SOMEDAY
 
     /* Return true if the FEN string matches the pattern */
     return (ret == 0);
@@ -183,4 +183,49 @@ Datum chessboard_constructor(PG_FUNCTION_ARGS)
     pfree(fen_str); // Free the allocated C string
 
     PG_RETURN_POINTER(result);
+}
+
+
+// FUNCTIONSSSSSSSSSSSSSSSSSS
+
+PG_FUNCTION_INFO_V1(get_board);
+
+Datum get_board(PG_FUNCTION_ARGS) {
+    text *chessgame_text = PG_GETARG_TEXT_P(0);
+    int halfmove_count = PG_GETARG_INT32(1);
+
+    // Convert text to C string
+    char *chessgame_str = text_to_cstring(chessgame_text);
+
+    // Validate the FEN string
+    if (!isValidFEN(chessgame_str)) {
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                 errmsg("invalid FEN representation: %s", chessgame_str)));
+    }
+
+    // Parse the FEN string
+    Chessboard *chessboard = (Chessboard *)palloc(sizeof(Chessboard));
+    if (sscanf(chessgame_str, "%s %c %s %s %d %d",
+               chessboard->positions,
+               &chessboard->turn,
+               chessboard->castling,
+               chessboard->en_passant,
+               &chessboard->halfmove_clock,
+               &chessboard->fullmove_number) != 6) {
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                 errmsg("failed to parse FEN string: %s", chessgame_str)));
+    }
+
+    // Free the allocated C string
+    pfree(chessgame_str);
+
+    // Modify chessboard state based on halfmove_count
+    // (You need to implement this logic based on your requirements)
+
+    // Now you have the Chessboard struct representing the board state
+    // at the specified half-move
+
+    PG_RETURN_POINTER(chessboard);
 }
