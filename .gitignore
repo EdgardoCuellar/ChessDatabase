@@ -1,4 +1,9 @@
-data
-chess/*.o
+# Compiled source #
+###################
+*.o
+*.so
+*.bc
 
+# IDE specific files #
+######################
 .vscode/
