@@ -418,110 +418,83 @@ Datum san_not_like(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(!like_result);
 }
 
-/**
- * Compares two FEN types for equality.
- *
- * Determines if the positions of two FEN types are equal.
- *
- * @param fcinfo Function call info containing arguments.
- * @return Boolean value - true if the two FEN types are equal; false otherwise.
- */
 Datum fen_eq(PG_FUNCTION_ARGS) {
     FEN *fen1, *fen2;
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-        ereport(ERROR, (errmsg("fen_eq: One of the arguments is null")));
+    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
+        elog(ERROR, "fen_eq: One of the arguments is null");
+    }
 
     fen1 = (FEN *) PG_GETARG_POINTER(0);
     fen2 = (FEN *) PG_GETARG_POINTER(1);
+
+    elog(LOG, "fen_eq: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
 
     PG_RETURN_BOOL(strcmp(fen1->positions, fen2->positions) == 0);
 }
 
-/**
- * Compares two FEN types to determine if the first is less than the second.
- *
- * Compares the positions of two FEN types.
- *
- * @param fcinfo Function call info containing arguments.
- * @return Boolean value - true if the first FEN type is less than the second; false otherwise.
- */
 Datum fen_lt(PG_FUNCTION_ARGS) {
     FEN *fen1, *fen2;
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-        ereport(ERROR, (errmsg("fen_lt: One of the arguments is null")));
+    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
+        elog(ERROR, "fen_lt: One of the arguments is null");
+    }
 
     fen1 = (FEN *) PG_GETARG_POINTER(0);
     fen2 = (FEN *) PG_GETARG_POINTER(1);
+
+    elog(LOG, "fen_lt: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
 
     PG_RETURN_BOOL(strcmp(fen1->positions, fen2->positions) < 0);
 }
 
-/**
- * Compares two FEN types to determine if the first is greater than the second.
- *
- * Compares the positions of two FEN types.
- *
- * @param fcinfo Function call info containing arguments.
- * @return Boolean value - true if the first FEN type is greater than the second; false otherwise.
- */
 Datum fen_gt(PG_FUNCTION_ARGS) {
     FEN *fen1, *fen2;
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-        ereport(ERROR, (errmsg("fen_gt: One of the arguments is null")));
+    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
+        elog(ERROR, "fen_gt: One of the arguments is null");
+    }
 
     fen1 = (FEN *) PG_GETARG_POINTER(0);
     fen2 = (FEN *) PG_GETARG_POINTER(1);
 
+    elog(LOG, "fen_gt: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
+
     PG_RETURN_BOOL(strcmp(fen1->positions, fen2->positions) > 0);
 }
 
-/**
- * Compares two FEN types.
- *
- * Returns an integer indicating the relationship between two FEN types based on their positions.
- *
- * @param fcinfo Function call info containing arguments.
- * @return Integer less than, equal to, or greater than zero if the first FEN is found,
- * respectively, to be less than, to match, or be greater than the second FEN.
- */
 Datum fen_cmp(PG_FUNCTION_ARGS) {
     FEN *fen1, *fen2;
 
     int cmp;
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-        ereport(ERROR, (errmsg("fen_cmp: One of the arguments is null")));
+    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
+        elog(ERROR, "fen_cmp: One of the arguments is null");
+    }
 
     fen1 = (FEN *) PG_GETARG_POINTER(0);
     fen2 = (FEN *) PG_GETARG_POINTER(1);
+
+    elog(LOG, "fen_cmp: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
 
     cmp = strcmp(fen1->positions, fen2->positions);
     PG_RETURN_INT32(cmp);
 }
 
-/**
- * Determines if a FEN type matches a given pattern using the LIKE operation.
- *
- * Compares a FEN type's positions to a text pattern. Useful for pattern matching operations in queries.
- *
- * @param fcinfo Function call info containing arguments.
- * @return Boolean value - true if the FEN type matches the pattern; false otherwise.
- */
-Datum fen_like(PG_FUNCTION_ARGS)
-{
+Datum fen_like(PG_FUNCTION_ARGS) {
     FEN *fen;
     text *pattern;
 
     bool result;
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-        ereport(ERROR, (errmsg("fen_like: One of the arguments is null")));
+    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
+        elog(ERROR, "fen_like: One of the arguments is null");
+    }
 
     fen = (FEN *) PG_GETARG_POINTER(0);
     pattern = PG_GETARG_TEXT_PP(1);
+
+    elog(LOG, "fen_like: Matching FEN string: %s with pattern: %s", fen->positions, text_to_cstring(pattern));
 
     result = DatumGetBool(DirectFunctionCall2(textlike, 
                                                CStringGetTextDatum(fen->positions), 
@@ -530,26 +503,20 @@ Datum fen_like(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
-/**
- * Determines if a FEN type does not match a given pattern using the NOT LIKE operation.
- *
- * Compares a FEN type's positions to a text pattern and returns the opposite of the LIKE operation result.
- *
- * @param fcinfo Function call info containing arguments.
- * @return Boolean value - true if the FEN type does not match the pattern; false otherwise.
- */
-Datum fen_not_like(PG_FUNCTION_ARGS)
-{
+Datum fen_not_like(PG_FUNCTION_ARGS) {
     FEN *fen;
     text *pattern;
 
     bool like_result;
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-        ereport(ERROR, (errmsg("fen_not_like: One of the arguments is null")));
+    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
+        elog(ERROR, "fen_not_like: One of the arguments is null");
+    }
 
     fen = (FEN *) PG_GETARG_POINTER(0);
     pattern = PG_GETARG_TEXT_PP(1);
+
+    elog(LOG, "fen_not_like: Matching FEN string: %s with pattern: %s", fen->positions, text_to_cstring(pattern));
 
     like_result = DatumGetBool(DirectFunctionCall2(textlike, 
                                                    CStringGetTextDatum(fen->positions), 
@@ -558,13 +525,12 @@ Datum fen_not_like(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(!like_result);
 }
 
-
-Datum
-fen_extract_value(PG_FUNCTION_ARGS)
-{
+Datum fen_extract_value(PG_FUNCTION_ARGS) {
     bytea *input = PG_GETARG_BYTEA_P(0);
     int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
     bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
+
+    elog(LOG, "fen_extract_value: Extracting FEN value from bytea input");
 
     // Extract the FEN structure from the bytea input.
     FEN *fen = (FEN *) VARDATA_ANY(input);
@@ -575,6 +541,8 @@ fen_extract_value(PG_FUNCTION_ARGS)
     // Convert the FEN structure to a string.
     char *fenStr = parseFEN_ToStr(fen);
 
+    elog(LOG, "fen_extract_value: Extracted FEN string: %s", fenStr);
+
     // Allocate memory for the extracted key string.
     text *keyText = cstring_to_text(fenStr);
 
@@ -587,15 +555,17 @@ fen_extract_value(PG_FUNCTION_ARGS)
     PG_RETURN_POINTER(keys);
 }
 
-Datum
-fen_extract_query(PG_FUNCTION_ARGS)
-{
+Datum fen_extract_query(PG_FUNCTION_ARGS) {
     Datum query = PG_GETARG_DATUM(0);
     int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
     bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
 
+    elog(LOG, "fen_extract_query: Extracting FEN query from Datum");
+
     // Extract the FEN string from the query.
-    char *fenStr = text_to_cstring(DatumGetTextPP(query));
+    char *fenStr = text_to_cstring(DatumGetTextP(query));
+
+    elog(LOG, "fen_extract_query: Extracted FEN query string: %s", fenStr);
 
     // Allocate memory for the array of extracted keys.
     Datum *keys = palloc(sizeof(Datum) * 1);
@@ -612,9 +582,7 @@ fen_extract_query(PG_FUNCTION_ARGS)
     PG_RETURN_POINTER(keys);
 }
 
-Datum
-fen_consistent(PG_FUNCTION_ARGS)
-{
+Datum fen_consistent(PG_FUNCTION_ARGS) {
     // bool *check = (bool *) PG_GETARG_POINTER(0);
     // StrategyNumber n = PG_GETARG_UINT16(1); // Commented out, not used
     Datum query = PG_GETARG_DATUM(2);
@@ -623,6 +591,8 @@ fen_consistent(PG_FUNCTION_ARGS)
     bool *nullFlags = (bool *) PG_GETARG_POINTER(5);
     bool *recheck = (bool *) PG_GETARG_POINTER(6);
     Datum *queryKeys = (Datum *) PG_GETARG_POINTER(7);
+
+    elog(LOG, "fen_consistent: Checking consistency of FEN values");
 
     // Ensure the FEN string is not null.
     if (nullFlags[0]) {
@@ -637,6 +607,8 @@ fen_consistent(PG_FUNCTION_ARGS)
     // Extract the FEN string from the query.
     char *queryFen = text_to_cstring(DatumGetTextPP(query));
 
+    elog(LOG, "fen_consistent: Stored FEN: %s, Query FEN: %s", storedFen, queryFen);
+
     // Compare the stored FEN string with the query FEN string.
     bool match = (strcmp(storedFen, queryFen) == 0);
 
@@ -650,19 +622,16 @@ fen_consistent(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(match);
 }
 
-Datum
-fen_triconsistent(PG_FUNCTION_ARGS)
-{
-    // GinTernaryValue *check = (GinTernaryValue *) PG_GETARG_POINTER(0);
-    // StrategyNumber n = PG_GETARG_UINT16(1);
+Datum fen_triconsistent(PG_FUNCTION_ARGS) {
     Datum query = PG_GETARG_DATUM(2);
-    // int32 nkeys = PG_GETARG_INT32(3);
-    // Pointer *extra_data = (Pointer *) PG_GETARG_POINTER(4);
     Datum *queryKeys = (Datum *) PG_GETARG_POINTER(7);
     bool *nullFlags = (bool *) PG_GETARG_POINTER(5);
 
-    // Ensure the FEN string is not null.
-    if (nullFlags[0]) {
+    elog(LOG, "fen_triconsistent: Checking triconsistency of FEN values");
+
+    // Check if either the stored or query FEN string is NULL.
+    if (nullFlags[0] || PG_ARGISNULL(2)) {
+        // If either is NULL, return MAYBE.
         GIN_MAYBE;
     }
 
@@ -671,7 +640,9 @@ fen_triconsistent(PG_FUNCTION_ARGS)
     char *storedFen = text_to_cstring(storedText);
 
     // Extract the FEN string from the query.
-    char *queryFen = text_to_cstring(DatumGetTextPP(query));
+    char *queryFen = text_to_cstring(DatumGetTextP(query));
+
+    elog(LOG, "fen_triconsistent: Stored FEN: %s, Query FEN: %s", storedFen, queryFen);
 
     // Compare the stored FEN string with the query FEN string.
     int cmp = strcmp(storedFen, queryFen);
@@ -689,3 +660,4 @@ fen_triconsistent(PG_FUNCTION_ARGS)
         GIN_MAYBE;
     }
 }
+

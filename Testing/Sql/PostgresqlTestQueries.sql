@@ -263,5 +263,19 @@ WHERE has_board(game,
 
 
 ------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------GIN INDEX-------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
+
+
+create extension chess;
+--  Table for FEN 'chessboard' data type
+CREATE TABLE test_chess_board (
+    id serial PRIMARY KEY,
+    gameboard FEN
+);
+
+-- Inserting data
+INSERT INTO test_chess_board (gameboard) VALUES ('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+INSERT INTO test_chess_board (gameboard) VALUES ('rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2');
+
+CREATE INDEX idx_test_chess_board_gameboard ON test_chess_board USING gin(gameboard);
