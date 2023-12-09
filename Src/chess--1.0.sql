@@ -86,66 +86,6 @@ CREATE FUNCTION san_not_like(SAN, TEXT)
   AS 'MODULE_PATHNAME', 'san_not_like' 
   LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
 
-/* FEN operators create */
-CREATE OR REPLACE FUNCTION fen_eq(fen, fen)
-RETURNS boolean
-AS 'MODULE_PATHNAME', 'fen_eq'
-LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
--- Function to compare two fen values for less than
-CREATE OR REPLACE FUNCTION fen_lt(fen, fen)
-RETURNS boolean
-AS 'MODULE_PATHNAME', 'fen_lt'
-LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
--- Function to compare two fen values for greater than
-CREATE OR REPLACE FUNCTION fen_gt(fen, fen)
-RETURNS boolean
-AS 'MODULE_PATHNAME', 'fen_gt'
-LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
--- Function to compare two fen values
-CREATE OR REPLACE FUNCTION fen_cmp(fen, fen)
-RETURNS integer
-AS 'MODULE_PATHNAME', 'fen_cmp'
-LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
--- Function to check if a fen value matches a pattern
-CREATE OR REPLACE FUNCTION fen_like(fen, TEXT)
-RETURNS boolean
-AS 'MODULE_PATHNAME', 'fen_like'
-LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
--- Function to check if a fen value does not match a pattern
-CREATE OR REPLACE FUNCTION fen_not_like(fen, TEXT)
-RETURNS boolean
-AS 'MODULE_PATHNAME', 'fen_not_like'
-LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
--- Function to extract a value from a fen value
-CREATE OR REPLACE FUNCTION fen_extract_value(fen, smallint, internal)
-RETURNS internal
-AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT;
-
--- Function to extract a query from a fen value
-CREATE OR REPLACE FUNCTION fen_extract_query(fen, smallint, internal)
-RETURNS internal
-AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT;
-
--- Function for GIN index consistency check
-CREATE OR REPLACE FUNCTION fen_consistent(fen, smallint, internal, internal, internal, internal)
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT;
-
--- Function for GIN index tri-state consistency check
-CREATE OR REPLACE FUNCTION fen_triconsistent(fen, smallint, internal, internal, internal, internal)
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT;
-
 /* Operators */
 
 CREATE OPERATOR = (
@@ -189,48 +129,97 @@ USING btree AS
     OPERATOR 5 >,
     FUNCTION 1 san_cmp(san, san);
 
-/* Operators for fen */
+/* FEN operators create */
+CREATE OR REPLACE FUNCTION fen_eq(fen, fen)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'fen_eq'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION fen_contains(fen, fen)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'fen_contains'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fen_contained_by(fen, fen)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'fen_contained_by'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fen_overlap(fen, fen)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'fen_overlap'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+-- Function to extract a value from a fen value
+CREATE OR REPLACE FUNCTION fen_compare(internal, internal)
+RETURNS integer
+AS 'MODULE_PATHNAME', 'fen_compare'
+LANGUAGE C STRICT;
+
+-- Function to extract a value from a fen value
+CREATE OR REPLACE FUNCTION fen_extract_value(internal, internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'fen_extract_value'
+LANGUAGE C STRICT;
+
+-- Function to extract a query from a fen value
+CREATE OR REPLACE FUNCTION  fen_extract_query(internal, internal, internal, internal, internal, internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'fen_extract_query'
+LANGUAGE C STRICT;
+
+-- Function for GIN index tri-state consistency check
+CREATE OR REPLACE FUNCTION fen_triconsistent(internal, internal, internal, internal, internal, internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'fen_triconsistent'
+LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION fen_consistent(internal, internal, internal, internal, internal, internal, internal, internal)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'fen_consistent'
+LANGUAGE C STRICT;
+
+-- Operator for fen_eq
 CREATE OPERATOR = (
-  LEFTARG = fen, RIGHTARG = fen,
+  LEFTARG = FEN, RIGHTARG = FEN,
   PROCEDURE = fen_eq,
   COMMUTATOR = =, NEGATOR = <>
 );
 
-CREATE OPERATOR < (
-  LEFTARG = fen, RIGHTARG = fen,
-  PROCEDURE = fen_lt,
-  COMMUTATOR = >, NEGATOR = >=
+-- Operator for fen_contains
+CREATE OPERATOR @> (
+  LEFTARG = FEN, RIGHTARG = FEN,
+  PROCEDURE = fen_contains,
+  COMMUTATOR = <@, NEGATOR = !@>
 );
 
-CREATE OPERATOR > (
-  LEFTARG = fen, RIGHTARG = fen,
-  PROCEDURE = fen_gt,
-  COMMUTATOR = <, NEGATOR = <=
+-- Operator for fen_contained_by
+CREATE OPERATOR <@ (
+  LEFTARG = FEN, RIGHTARG = FEN,
+  PROCEDURE = fen_contained_by,
+  COMMUTATOR = @>, NEGATOR = !<@
 );
 
-CREATE OPERATOR ~~ (
-  LEFTARG = fen,
-  RIGHTARG = TEXT,
-  PROCEDURE = fen_like,
-  COMMUTATOR = !~~
-);
-
-CREATE OPERATOR !~~ (
-  LEFTARG = fen,
-  RIGHTARG = TEXT,
-  PROCEDURE = fen_not_like
+-- Operator for fen_overlap
+CREATE OPERATOR && (
+  LEFTARG = FEN, RIGHTARG = FEN,
+  PROCEDURE = fen_overlap,
+  COMMUTATOR = &&, NEGATOR = !&&
 );
 
 
 /* GIN Index */ 
+-- Create an operator class for the type "fen" using GIN
 CREATE OPERATOR CLASS fen_gin_ops
 DEFAULT FOR TYPE fen
 USING gin AS
-   OPERATOR        1  <(fen, fen),
-   OPERATOR        3  =(fen, fen),
-   OPERATOR        5  >(fen, fen),
-   FUNCTION        1  fen_consistent(fen, smallint, internal, internal, internal, internal),
-   FUNCTION        2  fen_triconsistent(fen, smallint, internal, internal, internal, internal),
-   FUNCTION        3  fen_extract_value(fen, smallint, internal),
-   FUNCTION        4  fen_extract_query(fen, smallint, internal);
+   -- Define operators
+   OPERATOR 3  =(fen, fen),
+	 OPERATOR	7	 @> (fen,fen),  
+	 OPERATOR	8  <@ (fen,fen),
+	 OPERATOR	9  && (fen,fen),
+   FUNCTION 1 fen_compare(internal, internal),
+   FUNCTION 2 fen_extract_value(internal, internal, internal),
+   FUNCTION 3 fen_extract_query(internal, internal, internal, internal, internal, internal, internal),
+   FUNCTION 4 fen_consistent(internal, internal, internal, internal, internal, internal, internal, internal),
+   FUNCTION 5 fen_triconsistent(internal, internal, internal, internal, internal, internal, internal);

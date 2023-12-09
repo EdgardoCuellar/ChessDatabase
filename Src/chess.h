@@ -82,22 +82,20 @@ Datum san_not_like(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(fen_eq);
 Datum fen_eq(PG_FUNCTION_ARGS);
 
-PG_FUNCTION_INFO_V1(fen_lt);
-Datum fen_lt(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(fen_contains);
+Datum fen_contains(PG_FUNCTION_ARGS);
 
-PG_FUNCTION_INFO_V1(fen_gt);
-Datum fen_gt(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(fen_contained_by);
+Datum fen_contained_by(PG_FUNCTION_ARGS);
 
-PG_FUNCTION_INFO_V1(fen_cmp);
-Datum fen_cmp(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(fen_overlap);
+Datum fen_overlap(PG_FUNCTION_ARGS);
 
-PG_FUNCTION_INFO_V1(fen_like);
-Datum fen_like(PG_FUNCTION_ARGS);
-
-PG_FUNCTION_INFO_V1(fen_not_like);
-Datum fen_not_like(PG_FUNCTION_ARGS);
 
 /* GIN INDEXES */
+
+PG_FUNCTION_INFO_V1(fen_compare);
+Datum fen_compare(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(fen_extract_value);
 Datum fen_extract_value(PG_FUNCTION_ARGS);

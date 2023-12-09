@@ -418,246 +418,284 @@ Datum san_not_like(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(!like_result);
 }
 
+
 Datum fen_eq(PG_FUNCTION_ARGS) {
-    FEN *fen1, *fen2;
+    FEN *a = (FEN *)PG_GETARG_POINTER(0);
+    FEN *b = (FEN *)PG_GETARG_POINTER(1);
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
-        elog(ERROR, "fen_eq: One of the arguments is null");
-    }
-
-    fen1 = (FEN *) PG_GETARG_POINTER(0);
-    fen2 = (FEN *) PG_GETARG_POINTER(1);
-
-    elog(LOG, "fen_eq: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
-
-    PG_RETURN_BOOL(strcmp(fen1->positions, fen2->positions) == 0);
+    PG_RETURN_BOOL(strcmp(a->positions, b->positions) == 0);
 }
 
-Datum fen_lt(PG_FUNCTION_ARGS) {
-    FEN *fen1, *fen2;
+Datum fen_contains(PG_FUNCTION_ARGS) {
+    FEN *a = (FEN *)PG_GETARG_POINTER(0);
+    FEN *b = (FEN *)PG_GETARG_POINTER(1);
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
-        elog(ERROR, "fen_lt: One of the arguments is null");
-    }
-
-    fen1 = (FEN *) PG_GETARG_POINTER(0);
-    fen2 = (FEN *) PG_GETARG_POINTER(1);
-
-    elog(LOG, "fen_lt: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
-
-    PG_RETURN_BOOL(strcmp(fen1->positions, fen2->positions) < 0);
+    PG_RETURN_BOOL(strstr(a->positions, b->positions) != NULL);
 }
 
-Datum fen_gt(PG_FUNCTION_ARGS) {
-    FEN *fen1, *fen2;
+Datum fen_contained_by(PG_FUNCTION_ARGS) {
+    FEN *a = (FEN *)PG_GETARG_POINTER(0);
+    FEN *b = (FEN *)PG_GETARG_POINTER(1);
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
-        elog(ERROR, "fen_gt: One of the arguments is null");
-    }
-
-    fen1 = (FEN *) PG_GETARG_POINTER(0);
-    fen2 = (FEN *) PG_GETARG_POINTER(1);
-
-    elog(LOG, "fen_gt: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
-
-    PG_RETURN_BOOL(strcmp(fen1->positions, fen2->positions) > 0);
+    PG_RETURN_BOOL(strstr(b->positions, a->positions) != NULL);
 }
 
+Datum fen_overlap(PG_FUNCTION_ARGS) {
+    FEN *a = (FEN *)PG_GETARG_POINTER(0);
+    FEN *b = (FEN *)PG_GETARG_POINTER(1);
+
+    // Assuming that 'x' represents an empty square, check for overlap by comparing non-empty squares
+    for (int i = 0; i < strlen(a->positions); i++) {
+        if (a->positions[i] != 'x' && a->positions[i] == b->positions[i]) {
+            PG_RETURN_BOOL(true);
+        }
+    }
+
+    PG_RETURN_BOOL(false);
+}
+
+int fen_cmp_internal(const FEN *a, const FEN *b) {
+    // Compare position of pieces
+    int position_cmp = strcmp(a->positions, b->positions);
+    if (position_cmp != 0) {
+        return position_cmp;
+    }
+
+    // Compare turn
+    if (a->turn < b->turn) {
+        return -1;
+    } else if (a->turn > b->turn) {
+        return 1;
+    }
+
+    // Compare castling rights
+    int castling_cmp = strcmp(a->castling, b->castling);
+    if (castling_cmp != 0) {
+        return castling_cmp;
+    }
+
+    // Compare en passant target square
+    int ep_square_cmp = strcmp(a->en_passant, b->en_passant);
+    if (ep_square_cmp != 0) {
+        return ep_square_cmp;
+    }
+
+    // Compare halfmove clock
+    if (a->halfmove_clock < b->halfmove_clock) {
+        return -1;
+    } else if (a->halfmove_clock > b->halfmove_clock) {
+        return 1;
+    }
+
+    // Compare fullmove number
+    if (a->fullmove_number < b->fullmove_number) {
+        return -1;
+    } else if (a->fullmove_number > b->fullmove_number) {
+        return 1;
+    }
+
+    // FEN values are equal
+    return 0;
+}
+
+PG_FUNCTION_INFO_V1(fen_cmp);
 Datum fen_cmp(PG_FUNCTION_ARGS) {
-    FEN *fen1, *fen2;
+    FEN *fen_a = (FEN *)PG_GETARG_POINTER(0);
+    FEN *fen_b = (FEN *)PG_GETARG_POINTER(1);
 
-    int cmp;
+    int32 result = fen_cmp_internal(fen_a, fen_b);
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
-        elog(ERROR, "fen_cmp: One of the arguments is null");
-    }
-
-    fen1 = (FEN *) PG_GETARG_POINTER(0);
-    fen2 = (FEN *) PG_GETARG_POINTER(1);
-
-    elog(LOG, "fen_cmp: Comparing FEN strings: %s and %s", fen1->positions, fen2->positions);
-
-    cmp = strcmp(fen1->positions, fen2->positions);
-    PG_RETURN_INT32(cmp);
+    PG_RETURN_INT32(result);
 }
 
-Datum fen_like(PG_FUNCTION_ARGS) {
-    FEN *fen;
-    text *pattern;
+// Compare two keys
+Datum fen_compare(PG_FUNCTION_ARGS) {
+    FEN *fen_a = (FEN *)PG_GETARG_POINTER(0);
+    FEN *fen_b = (FEN *)PG_GETARG_POINTER(1);
 
-    bool result;
+    int32 result = fen_cmp_internal(fen_a, fen_b);
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
-        elog(ERROR, "fen_like: One of the arguments is null");
-    }
-
-    fen = (FEN *) PG_GETARG_POINTER(0);
-    pattern = PG_GETARG_TEXT_PP(1);
-
-    elog(LOG, "fen_like: Matching FEN string: %s with pattern: %s", fen->positions, text_to_cstring(pattern));
-
-    result = DatumGetBool(DirectFunctionCall2(textlike, 
-                                               CStringGetTextDatum(fen->positions), 
-                                               PointerGetDatum(pattern)));
-
-    PG_RETURN_BOOL(result);
+    PG_RETURN_INT32(result);
 }
 
-Datum fen_not_like(PG_FUNCTION_ARGS) {
-    FEN *fen;
-    text *pattern;
+Datum fen_extract_keys(PG_FUNCTION_ARGS) {
+    FEN *fen = (FEN *)PG_GETARG_POINTER(0);
+    int32 *nkeys = (int32 *)PG_GETARG_POINTER(1);
+    bool **nullFlags = (bool **)PG_GETARG_POINTER(2);
 
-    bool like_result;
+    // Extracting keys from the FEN structure
+    int32 keys[1000];  // Assuming MAX_KEYS is the maximum number of keys you expect
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1)) {
-        elog(ERROR, "fen_not_like: One of the arguments is null");
+    // For simplicity, we'll use the halfmove_clock as the key
+    keys[0] = fen->halfmove_clock;
+
+    // Set the number of keys
+    *nkeys = 1;
+
+    // Set null flags (if applicable)
+    if (nullFlags) {
+        *nullFlags = (bool *)palloc(sizeof(bool) * *nkeys);
+        for (int i = 0; i < *nkeys; i++) {
+            (*nullFlags)[i] = false;  // Assuming the halfmove_clock cannot be null
+        }
     }
 
-    fen = (FEN *) PG_GETARG_POINTER(0);
-    pattern = PG_GETARG_TEXT_PP(1);
-
-    elog(LOG, "fen_not_like: Matching FEN string: %s with pattern: %s", fen->positions, text_to_cstring(pattern));
-
-    like_result = DatumGetBool(DirectFunctionCall2(textlike, 
-                                                   CStringGetTextDatum(fen->positions), 
-                                                   PointerGetDatum(pattern)));
-
-    PG_RETURN_BOOL(!like_result);
+    // Return the keys array (or NULL if no keys)
+    if (*nkeys > 0) {
+        int32 *result = (int32 *)palloc(sizeof(int32) * *nkeys);
+        memcpy(result, keys, sizeof(int32) * *nkeys);
+        PG_RETURN_POINTER(result);
+    } else {
+        PG_RETURN_NULL();
+    }
 }
+
 
 Datum fen_extract_value(PG_FUNCTION_ARGS) {
-    bytea *input = PG_GETARG_BYTEA_P(0);
-    int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-    bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
+    Datum itemValue = PG_GETARG_DATUM(0);
+    int32 *nkeys = (int32 *)PG_GETARG_POINTER(1);
+    bool **nullFlags = (bool **)PG_GETARG_POINTER(2);
 
-    elog(LOG, "fen_extract_value: Extracting FEN value from bytea input");
+    // Extracting value from the item (assuming it's a FEN structure)
+    FEN *fen = (FEN *)DatumGetPointer(itemValue);
 
-    // Extract the FEN structure from the bytea input.
-    FEN *fen = (FEN *) VARDATA_ANY(input);
+    // For simplicity, we'll use the halfmove_clock as the value
+    int32 *value = (int32 *)palloc(sizeof(int32));
+    *value = fen->halfmove_clock;
 
-    // Allocate memory for the array of extracted keys.
-    Datum *keys = palloc(sizeof(Datum) * 1);
-
-    // Convert the FEN structure to a string.
-    char *fenStr = parseFEN_ToStr(fen);
-
-    elog(LOG, "fen_extract_value: Extracted FEN string: %s", fenStr);
-
-    // Allocate memory for the extracted key string.
-    text *keyText = cstring_to_text(fenStr);
-
-    // Set the extracted key and null flag arrays.
-    keys[0] = PointerGetDatum(keyText);
+    // Set the number of keys
     *nkeys = 1;
-    *nullFlags = (bool *) palloc(sizeof(bool) * 1);
-    (*nullFlags)[0] = false;
 
-    PG_RETURN_POINTER(keys);
-}
-
-Datum fen_extract_query(PG_FUNCTION_ARGS) {
-    Datum query = PG_GETARG_DATUM(0);
-    int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-    bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
-
-    elog(LOG, "fen_extract_query: Extracting FEN query from Datum");
-
-    // Extract the FEN string from the query.
-    char *fenStr = text_to_cstring(DatumGetTextP(query));
-
-    elog(LOG, "fen_extract_query: Extracted FEN query string: %s", fenStr);
-
-    // Allocate memory for the array of extracted keys.
-    Datum *keys = palloc(sizeof(Datum) * 1);
-
-    // Allocate memory for the extracted key string.
-    text *keyText = cstring_to_text(fenStr);
-
-    // Set the extracted key and null flag arrays.
-    keys[0] = PointerGetDatum(keyText);
-    *nkeys = 1;
-    *nullFlags = (bool *) palloc(sizeof(bool) * 1);
-    (*nullFlags)[0] = false;
-
-    PG_RETURN_POINTER(keys);
-}
-
-Datum fen_consistent(PG_FUNCTION_ARGS) {
-    // bool *check = (bool *) PG_GETARG_POINTER(0);
-    // StrategyNumber n = PG_GETARG_UINT16(1); // Commented out, not used
-    Datum query = PG_GETARG_DATUM(2);
-    // int32 nkeys = PG_GETARG_INT32(3); // Commented out, not used
-    // Pointer *extra_data = (Pointer *) PG_GETARG_POINTER(4); // Commented out, not used
-    bool *nullFlags = (bool *) PG_GETARG_POINTER(5);
-    bool *recheck = (bool *) PG_GETARG_POINTER(6);
-    Datum *queryKeys = (Datum *) PG_GETARG_POINTER(7);
-
-    elog(LOG, "fen_consistent: Checking consistency of FEN values");
-
-    // Ensure the FEN string is not null.
-    if (nullFlags[0]) {
-        *recheck = false;
-        PG_RETURN_BOOL(false);
+    // Set null flags (if applicable)
+    if (nullFlags) {
+        *nullFlags = (bool *)palloc(sizeof(bool) * *nkeys);
+        for (int i = 0; i < *nkeys; i++) {
+            (*nullFlags)[i] = false;  // Assuming the halfmove_clock cannot be null
+        }
     }
 
-    // Extract the FEN string from the indexed item.
-    text *storedText = DatumGetTextP(queryKeys[0]);
-    char *storedFen = text_to_cstring(storedText);
+    // Return the value
+    PG_RETURN_POINTER(value);
+}
 
-    // Extract the FEN string from the query.
-    char *queryFen = text_to_cstring(DatumGetTextPP(query));
+// Extract keys from a query
+Datum fen_extract_query(PG_FUNCTION_ARGS) {
+    Datum query = PG_GETARG_DATUM(0);
+    int32 *nkeys = (int32 *)PG_GETARG_POINTER(1);
+    StrategyNumber n = PG_GETARG_UINT16(2);
+    bool **nullFlags = (bool **)PG_GETARG_POINTER(5);
+    int32 *searchMode = (int32 *)PG_GETARG_POINTER(6);
 
-    elog(LOG, "fen_consistent: Stored FEN: %s, Query FEN: %s", storedFen, queryFen);
+    // Extracting value from the query (assuming it's a FEN structure)
+    FEN *fenQuery = (FEN *)DatumGetPointer(query);
 
-    // Compare the stored FEN string with the query FEN string.
-    bool match = (strcmp(storedFen, queryFen) == 0);
+    // For simplicity, we'll use the halfmove_clock as the query value
+    int32 *queryKeys = (int32 *)palloc(sizeof(int32));
+    *queryKeys = fenQuery->halfmove_clock;
 
-    // Free the allocated memory.
-    pfree(storedFen);
-    pfree(queryFen);
+    // Set the number of keys
+    *nkeys = 1;
 
-    // Set recheck to false, as we have an exact match.
-    *recheck = false;
+    // Set null flags (if applicable)
+    if (nullFlags) {
+        *nullFlags = (bool *)palloc(sizeof(bool) * *nkeys);
+        for (int i = 0; i < *nkeys; i++) {
+            (*nullFlags)[i] = false;  // Assuming the halfmove_clock cannot be null
+        }
+    }
 
-    PG_RETURN_BOOL(match);
+    // Set search mode
+    *searchMode = GIN_SEARCH_MODE_DEFAULT;  // Adjust based on your specific needs
+
+    // Return the query keys
+    PG_RETURN_POINTER(queryKeys);
 }
 
 Datum fen_triconsistent(PG_FUNCTION_ARGS) {
+    GinTernaryValue *check = (GinTernaryValue *)PG_GETARG_POINTER(0);
+    StrategyNumber n = PG_GETARG_UINT16(1);
     Datum query = PG_GETARG_DATUM(2);
-    Datum *queryKeys = (Datum *) PG_GETARG_POINTER(7);
-    bool *nullFlags = (bool *) PG_GETARG_POINTER(5);
+    int32 nkeys = PG_GETARG_INT32(3);
+    Pointer *extra_data = (Pointer *)PG_GETARG_POINTER(4);
+    Datum *queryKeys = (Datum *)PG_GETARG_POINTER(5);
+    bool *nullFlags = (bool *)PG_GETARG_POINTER(6);
 
-    elog(LOG, "fen_triconsistent: Checking triconsistency of FEN values");
+    // Extracting value from the query (assuming it's a FEN structure)
+    FEN *fenQuery = (FEN *)DatumGetPointer(query);
 
-    // Check if either the stored or query FEN string is NULL.
-    if (nullFlags[0] || PG_ARGISNULL(2)) {
-        // If either is NULL, return MAYBE.
-        GIN_MAYBE;
+    // For simplicity, we'll use the halfmove_clock as the query value
+    int32 queryKey = fenQuery->halfmove_clock;
+
+    // Loop over the keys and determine triconsistency
+    for (int i = 0; i < nkeys; i++) {
+        if (check[i] == GIN_MAYBE) {
+            // If GIN_MAYBE, we can't confirm or refute based on known query keys
+            PG_RETURN_GIN_TERNARY_VALUE(GIN_MAYBE);
+        }
+
+        // Assuming that the keys are integers (adjust based on your data type)
+        int32 key = DatumGetInt32(queryKeys[i]);
+
+        if (check[i] == GIN_FALSE) {
+            // If GIN_FALSE, the indexed item does not contain the corresponding query key
+            if (key == queryKey) {
+                PG_RETURN_GIN_TERNARY_VALUE(GIN_FALSE);
+            }
+        } else if (check[i] == GIN_TRUE) {
+            // If GIN_TRUE, the indexed item contains the corresponding query key
+            if (key != queryKey) {
+                PG_RETURN_GIN_TERNARY_VALUE(GIN_FALSE);
+            }
+        }
     }
 
-    // Extract the FEN string from the indexed item.
-    text *storedText = DatumGetTextP(queryKeys[0]);
-    char *storedFen = text_to_cstring(storedText);
+    // If we reach here, the item might match, and we need to recheck
+    PG_RETURN_GIN_TERNARY_VALUE(GIN_MAYBE);
+}
 
-    // Extract the FEN string from the query.
-    char *queryFen = text_to_cstring(DatumGetTextP(query));
+Datum fen_consistent(PG_FUNCTION_ARGS) {
+    bool *check = (bool *)PG_GETARG_POINTER(0);
+    StrategyNumber n = PG_GETARG_UINT16(1);
+    Datum query = PG_GETARG_DATUM(2);
+    int32 nkeys = PG_GETARG_INT32(3);
+    Pointer *extra_data = (Pointer *)PG_GETARG_POINTER(4);
+    bool *recheck = (bool *)PG_GETARG_POINTER(5);
+    Datum *queryKeys = (Datum *)PG_GETARG_POINTER(6);
+    bool *nullFlags = (bool *)PG_GETARG_POINTER(7);
 
-    elog(LOG, "fen_triconsistent: Stored FEN: %s, Query FEN: %s", storedFen, queryFen);
+    // Extracting value from the query (assuming it's a FEN structure)
+    FEN *fenQuery = (FEN *)DatumGetPointer(query);
 
-    // Compare the stored FEN string with the query FEN string.
-    int cmp = strcmp(storedFen, queryFen);
+    // For simplicity, we'll use the halfmove_clock as the query value
+    int32 queryKey = fenQuery->halfmove_clock;
 
-    // Free the allocated memory.
-    pfree(storedFen);
-    pfree(queryFen);
+    // Loop over the keys and determine consistency
+    for (int i = 0; i < nkeys; i++) {
+        if (nullFlags && nullFlags[i]) {
+            // If the key is NULL, it's considered a match
+            if (check[i]) {
+                PG_RETURN_BOOL(true);
+            }
+        } else {
+            // Assuming that the keys are integers (adjust based on your data type)
+            int32 key = DatumGetInt32(queryKeys[i]);
 
-    // Check the result of the comparison and return the appropriate GinTernaryValue.
-    if (cmp == 0) {
-        GIN_TRUE;
-    } else if (cmp < 0) {
-        GIN_FALSE;
-    } else {
-        GIN_MAYBE;
+            if (check[i]) {
+                // If the indexed item contains the corresponding query key
+                if (key != queryKey) {
+                    PG_RETURN_BOOL(false);
+                }
+            } else {
+                // If the indexed item does not contain the corresponding query key
+                if (key == queryKey) {
+                    PG_RETURN_BOOL(false);
+                }
+            }
+        }
     }
+
+    // If we reach here, the item matches, and we don't need to recheck
+    *recheck = false;
+    PG_RETURN_BOOL(true);
 }
 
