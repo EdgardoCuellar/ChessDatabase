@@ -455,6 +455,7 @@ Datum fen_overlap(PG_FUNCTION_ARGS) {
 }
 
 int fen_cmp_internal(const FEN *a, const FEN *b) {
+    elog(INFO, "fen_cmp_internal");
     // Compare position of pieces
     int position_cmp = strcmp(a->positions, b->positions);
     if (position_cmp != 0) {
@@ -500,6 +501,7 @@ int fen_cmp_internal(const FEN *a, const FEN *b) {
 
 PG_FUNCTION_INFO_V1(fen_cmp);
 Datum fen_cmp(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_cmp_internal");
     FEN *fen_a = (FEN *)PG_GETARG_POINTER(0);
     FEN *fen_b = (FEN *)PG_GETARG_POINTER(1);
 
@@ -510,6 +512,7 @@ Datum fen_cmp(PG_FUNCTION_ARGS) {
 
 // Compare two keys
 Datum fen_compare(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_compare");
     FEN *fen_a = (FEN *)PG_GETARG_POINTER(0);
     FEN *fen_b = (FEN *)PG_GETARG_POINTER(1);
 
@@ -519,6 +522,7 @@ Datum fen_compare(PG_FUNCTION_ARGS) {
 }
 
 Datum fen_extract_keys(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_extract_keys");
     FEN *fen = (FEN *)PG_GETARG_POINTER(0);
     int32 *nkeys = (int32 *)PG_GETARG_POINTER(1);
     bool **nullFlags = (bool **)PG_GETARG_POINTER(2);
@@ -552,6 +556,7 @@ Datum fen_extract_keys(PG_FUNCTION_ARGS) {
 
 
 Datum fen_extract_value(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_extract_value");
     Datum itemValue = PG_GETARG_DATUM(0);
     int32 *nkeys = (int32 *)PG_GETARG_POINTER(1);
     bool **nullFlags = (bool **)PG_GETARG_POINTER(2);
@@ -559,27 +564,37 @@ Datum fen_extract_value(PG_FUNCTION_ARGS) {
     // Extracting value from the item (assuming it's a FEN structure)
     FEN *fen = (FEN *)DatumGetPointer(itemValue);
 
+    elog(INFO, "Extracting value from FEN: %s", fen->positions);
+
     // For simplicity, we'll use the halfmove_clock as the value
     int32 *value = (int32 *)palloc(sizeof(int32));
     *value = fen->halfmove_clock;
+
+    elog(INFO, "Extracted value: %d", *value);
 
     // Set the number of keys
     *nkeys = 1;
 
     // Set null flags (if applicable)
     if (nullFlags) {
+        elog(INFO, "Setting null flags");
         *nullFlags = (bool *)palloc(sizeof(bool) * *nkeys);
+        elog(INFO, "Allocated null flags");
         for (int i = 0; i < *nkeys; i++) {
+            elog(INFO, "Setting null flag for key %d", i);
             (*nullFlags)[i] = false;  // Assuming the halfmove_clock cannot be null
         }
     }
 
     // Return the value
-    PG_RETURN_POINTER(value);
+    elog(INFO, "Returning value");
+    PG_RETURN_INT32(*value);
 }
+
 
 // Extract keys from a query
 Datum fen_extract_query(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_extract_query");
     Datum query = PG_GETARG_DATUM(0);
     int32 *nkeys = (int32 *)PG_GETARG_POINTER(1);
     StrategyNumber n = PG_GETARG_UINT16(2);
@@ -589,9 +604,13 @@ Datum fen_extract_query(PG_FUNCTION_ARGS) {
     // Extracting value from the query (assuming it's a FEN structure)
     FEN *fenQuery = (FEN *)DatumGetPointer(query);
 
+    elog(INFO, "Extracting query keys from FEN: %s", fenQuery->positions);
+
     // For simplicity, we'll use the halfmove_clock as the query value
     int32 *queryKeys = (int32 *)palloc(sizeof(int32));
     *queryKeys = fenQuery->halfmove_clock;
+
+    elog(INFO, "Extracted query key: %d", *queryKeys);
 
     // Set the number of keys
     *nkeys = 1;
@@ -611,7 +630,9 @@ Datum fen_extract_query(PG_FUNCTION_ARGS) {
     PG_RETURN_POINTER(queryKeys);
 }
 
+
 Datum fen_triconsistent(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_triconsistent");
     GinTernaryValue *check = (GinTernaryValue *)PG_GETARG_POINTER(0);
     StrategyNumber n = PG_GETARG_UINT16(1);
     Datum query = PG_GETARG_DATUM(2);
@@ -626,34 +647,43 @@ Datum fen_triconsistent(PG_FUNCTION_ARGS) {
     // For simplicity, we'll use the halfmove_clock as the query value
     int32 queryKey = fenQuery->halfmove_clock;
 
+    elog(INFO, "Query Key: %d", queryKey);
+
     // Loop over the keys and determine triconsistency
     for (int i = 0; i < nkeys; i++) {
         if (check[i] == GIN_MAYBE) {
             // If GIN_MAYBE, we can't confirm or refute based on known query keys
+            elog(INFO, "Check[%d] is GIN_MAYBE", i);
             PG_RETURN_GIN_TERNARY_VALUE(GIN_MAYBE);
         }
 
         // Assuming that the keys are integers (adjust based on your data type)
         int32 key = DatumGetInt32(queryKeys[i]);
 
+        elog(INFO, "Query Key: %d, Key[%d]: %d", queryKey, i, key);
+
         if (check[i] == GIN_FALSE) {
             // If GIN_FALSE, the indexed item does not contain the corresponding query key
             if (key == queryKey) {
+                elog(INFO, "GIN_FALSE, but key matches");
                 PG_RETURN_GIN_TERNARY_VALUE(GIN_FALSE);
             }
         } else if (check[i] == GIN_TRUE) {
             // If GIN_TRUE, the indexed item contains the corresponding query key
             if (key != queryKey) {
+                elog(INFO, "GIN_TRUE, but key doesn't match");
                 PG_RETURN_GIN_TERNARY_VALUE(GIN_FALSE);
             }
         }
     }
 
     // If we reach here, the item might match, and we need to recheck
+    elog(INFO, "Recheck needed");
     PG_RETURN_GIN_TERNARY_VALUE(GIN_MAYBE);
 }
 
 Datum fen_consistent(PG_FUNCTION_ARGS) {
+    elog(INFO, "fen_consistent");
     bool *check = (bool *)PG_GETARG_POINTER(0);
     StrategyNumber n = PG_GETARG_UINT16(1);
     Datum query = PG_GETARG_DATUM(2);
@@ -669,25 +699,32 @@ Datum fen_consistent(PG_FUNCTION_ARGS) {
     // For simplicity, we'll use the halfmove_clock as the query value
     int32 queryKey = fenQuery->halfmove_clock;
 
+    elog(INFO, "Query Key: %d", queryKey);
+
     // Loop over the keys and determine consistency
     for (int i = 0; i < nkeys; i++) {
         if (nullFlags && nullFlags[i]) {
             // If the key is NULL, it's considered a match
             if (check[i]) {
+                elog(INFO, "Key[%d] is NULL, but consistent check is true", i);
                 PG_RETURN_BOOL(true);
             }
         } else {
             // Assuming that the keys are integers (adjust based on your data type)
             int32 key = DatumGetInt32(queryKeys[i]);
 
+            elog(INFO, "Query Key: %d, Key[%d]: %d", queryKey, i, key);
+
             if (check[i]) {
                 // If the indexed item contains the corresponding query key
                 if (key != queryKey) {
+                    elog(INFO, "Check is true, but key doesn't match");
                     PG_RETURN_BOOL(false);
                 }
             } else {
                 // If the indexed item does not contain the corresponding query key
                 if (key == queryKey) {
+                    elog(INFO, "Check is false, but key matches");
                     PG_RETURN_BOOL(false);
                 }
             }
@@ -696,6 +733,8 @@ Datum fen_consistent(PG_FUNCTION_ARGS) {
 
     // If we reach here, the item matches, and we don't need to recheck
     *recheck = false;
+    elog(INFO, "Item matches, no recheck needed");
     PG_RETURN_BOOL(true);
 }
+
 
